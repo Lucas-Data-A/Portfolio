@@ -99,6 +99,7 @@ Rede neural construída do zero em PyTorch para classificar imagens entre dois p
 
 - **`ciencia-de-dados/`** — projetos de análise, estatística, modelagem preditiva, séries temporais, deep learning e engenharia de dados.
 - **`engenharia-de-agentes-de-ia/`** — projetos de LLMs, RAG e orquestração de agentes _(em construção)_.
+- **`Outros-projetos/`** — projetos de estudos e outras áreas _(em construção)_.
 - **`certificados/`** — certificações e formações concluídas.
 
 ---
