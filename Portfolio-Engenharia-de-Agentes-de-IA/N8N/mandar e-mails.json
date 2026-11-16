@@ -1,0 +1,267 @@
+{
+  "name": "mandar e-mails",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Formulário",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nome: "
+            },
+            {
+              "fieldLabel": "E-mail:",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Campo de interesse:",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "IA"
+                  },
+                  {
+                    "option": "N8N"
+                  },
+                  {
+                    "option": "Dados"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -112,
+        16
+      ],
+      "id": "efa7a67c-f73b-4ae8-bcb3-aefc024c4663",
+      "name": "On form submission",
+      "webhookId": "b2ca24a1-7ef6-4b58-ad51-5b61416804af"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json[\"E-mail:\"] }}",
+        "subject": "Recebeu o contato!!",
+        "emailType": "text",
+        "message": "=Opa  {{ $json[\"Nome: \"] }} , recebemos sua inscrição!!",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -176
+      ],
+      "id": "aa98601d-c023-4b29-ac34-04c678769867",
+      "name": "Send a message",
+      "webhookId": "e769618e-344a-42ed-a9e1-29a56f4b3c14",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "orD2uvwzaPibIF24",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[\"Campo de interesse:\"] }}",
+                    "rightValue": "=IA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "48ecf21f-9e34-4219-b3ae-ab87fc07a460"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "527c6ee0-3f56-4f3e-a120-59cbb50da4b9",
+                    "leftValue": "={{ $json[\"Campo de interesse:\"] }}",
+                    "rightValue": "N8N",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "N8N"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9c67a416-e142-4d68-a71d-63a65ed68b63",
+                    "leftValue": "={{ $json[\"Campo de interesse:\"] }}",
+                    "rightValue": "Dados",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Dados"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        0
+      ],
+      "id": "cf2801d3-9c0c-423f-9b81-fece2aa57f51",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json[\"E-mail:\"] }}",
+        "subject": "N8N",
+        "emailType": "text",
+        "message": "N8N",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        16
+      ],
+      "id": "1b594da9-4f51-4bb8-99f3-ab5c86fe30b3",
+      "name": "Send a message1",
+      "webhookId": "d88fc3f1-dfeb-495b-ada5-f236415fb849",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "orD2uvwzaPibIF24",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json[\"E-mail:\"] }}",
+        "subject": "Dados",
+        "emailType": "text",
+        "message": "Dados",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        224
+      ],
+      "id": "67c8fe43-223d-4d1f-8812-4c9b59b17583",
+      "name": "Send a message2",
+      "webhookId": "d88fc3f1-dfeb-495b-ada5-f236415fb849",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "orD2uvwzaPibIF24",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "50e94451-318b-4e27-9bd2-161a2dbeebdc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "31611a6dce433924c7c9e673ab7f031f1b42fca5eb69138b93c79d831668f82a"
+  },
+  "nodeGroups": [],
+  "id": "UjiRrJuCI3Jwau4z",
+  "tags": []
+}

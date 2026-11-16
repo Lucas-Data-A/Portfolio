@@ -1,0 +1,228 @@
+{
+  "name": "Automatização de documento Docs",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Dados do Orçamento:",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nome: "
+            },
+            {
+              "fieldLabel": "CPF/CNPJ",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "E-mail:",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Telefone: ",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "Serviços:",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Entrada:",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "Desconto: ",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "Parcelas: ",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "x1"
+                  },
+                  {
+                    "option": "x2"
+                  },
+                  {
+                    "option": "x3"
+                  },
+                  {
+                    "option": "x4"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Prazo:",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "Endereço:"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "a6c68cd3-03c6-4fa5-a0bc-bb3beb689e0e",
+      "name": "On form submission",
+      "webhookId": "9778470c-1a71-4ebd-8eb1-228a029288eb"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://docs.googleapis.com/v1/documents/{{ $json.id }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: $('Calcular').item.json.requests }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        512,
+        0
+      ],
+      "id": "f9dd3e35-9113-4777-9353-f14b0f449e23",
+      "name": "HTTP Request",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "CcGY8trYGNZZhxuT",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $input.first().json;\nconst MAX = 6; // número de linhas da tabela no modelo do Docs\n\n// ---------- Utilitários ----------\n\n// Normaliza nomes: \"Serviços: \" -> \"servicos\"\nconst norm = (s) => String(s)\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .toLowerCase().replace(/[^a-z0-9]/g, '');\n\n// Busca um campo aceitando variações de nome\nconst campo = (...nomes) => {\n  const alvos = nomes.map(norm);\n  for (const [k, v] of Object.entries(f)) {\n    if (alvos.includes(norm(k))) return v;\n  }\n  return '';\n};\n\n// Converte para número: 2500, \"2500\", \"2.500,00\", \"2500.50\", \"x3\"\nconst num = (s) => {\n  if (typeof s === 'number') return s;\n  s = String(s ?? '').trim();\n  if (!s) return 0;\n  if (s.includes(',')) s = s.replace(/\\./g, '').replace(',', '.');\n  s = s.replace(/[^0-9.\\-]/g, '');\n  return parseFloat(s) || 0;\n};\n\n// Formata em reais: 2500 -> \"2.500,00\"\nconst brl = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// Formata CPF ou CNPJ (recupera zeros à esquerda perdidos)\nconst formatarDoc = (v) => {\n  let d = String(v ?? '').replace(/\\D/g, '');\n  if (!d) return '';\n  if (d.length <= 11) {\n    d = d.padStart(11, '0');\n    return d.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{2})/, '$1.$2.$3-$4');\n  }\n  d = d.padStart(14, '0');\n  return d.replace(/(\\d{2})(\\d{3})(\\d{3})(\\d{4})(\\d{2})/, '$1.$2.$3/$4-$5');\n};\n\n// Formata telefone: 81986831317 -> (81) 98683-1317\nconst formatarTel = (v) => {\n  let d = String(v ?? '').replace(/\\D/g, '');\n  if (d.length > 11 && d.startsWith('55')) d = d.slice(2); // remove +55\n  if (d.length === 11) return d.replace(/(\\d{2})(\\d{5})(\\d{4})/, '($1) $2-$3');\n  if (d.length === 10) return d.replace(/(\\d{2})(\\d{4})(\\d{4})/, '($1) $2-$3');\n  return d;\n};\n\n// ---------- Leitura dos campos ----------\n\nconst nome     = String(campo('Nome', 'Nome do cliente')).trim();\nconst email    = String(campo('E-mail', 'Email')).trim();\nconst docTxt   = formatarDoc(campo('CPF/CNPJ', 'CPF', 'CNPJ'));\nconst telefone = formatarTel(campo('Telefone', 'Celular', 'WhatsApp'));\nconst textoItens = campo('Serviços', 'Servicos', 'Itens');\nconst desconto   = num(campo('Desconto', 'Desconto à vista (R$)'));\nconst nParcelas  = Math.round(num(campo('Parcelas'))) || 3;\nconst prazo      = String(campo('Prazo', 'Prazo (dias úteis)') ?? '').trim();\nconst endereco = String(campo('Endereço', 'Endereco') ?? '').trim();\n\n// ---------- Itens (uma linha = um item) ----------\n\nconst linhas = String(textoItens || '')\n  .split(/\\r?\\n/)              // aceita \\r\\n e \\n\n  .map(l => l.trim())\n  .filter(Boolean);\n\nif (linhas.length === 0) throw new Error('Nenhum serviço informado.');\nif (linhas.length > MAX) throw new Error(`Máximo de ${MAX} serviços por orçamento (recebidos: ${linhas.length}).`);\n\nconst itens = linhas.map((l, i) => {\n  const partes = l.split('|').map(p => p.trim());\n  if (partes.length !== 3) {\n    throw new Error(`Linha ${i + 1} fora do formato \"Descrição | Qtd | Valor\": ${l}`);\n  }\n  const [desc, qtd, unit] = partes;\n  const q = num(qtd) || 1;\n  const u = num(unit);\n  return { desc, q, u, total: q * u };\n});\n\n// ---------- Cálculos ----------\n\nconst subtotal     = itens.reduce((s, it) => s + it.total, 0);\nconst totalFinal   = subtotal - desconto;\nconst entrada = num(campo('Entrada', 'Entrada (R$)'));\n\nif (entrada < 0) throw new Error('A entrada não pode ser negativa.');\nif (entrada > subtotal) {\n  throw new Error(`A entrada (R$ ${brl(entrada)}) é maior que o subtotal (R$ ${brl(subtotal)}).`);\n}\n\nconst valorParcela = (subtotal - entrada) / nParcelas;\n\nconst hoje = $now.setZone('America/Recife');\nconst numero = 'ORC-' + hoje.toFormat('yyyyMMdd-HHmm');\n\n// ---------- Marcadores -> valores ----------\n\nconst r = {\n  '{{NUMERO}}':        numero,\n  '{{DATA}}':          hoje.toFormat('dd/MM/yyyy'),\n  '{{VALIDADE}}':      hoje.plus({ days: 15 }).toFormat('dd/MM/yyyy'),\n  '{{NOME}}':          nome,\n  '{{EMAIL}}':         email,\n  '{{DOCUMENTO}}':     docTxt,\n  '{{TELEFONE}}':      telefone,\n  '{{ENDERECO}}':      endereco,\n  '{{SUBTOTAL}}':      'R$ ' + brl(subtotal),\n  '{{DESCONTO}}':      desconto > 0 ? '- R$ ' + brl(desconto) : 'R$ 0,00',\n  '{{TOTAL_FINAL}}':   'R$ ' + brl(totalFinal),\n  '{{ENTRADA}}':       'R$ ' + brl(entrada),\n  '{{NUM_PARCELAS}}':  String(nParcelas),\n  '{{VALOR_PARCELA}}': 'R$ ' + brl(valorParcela),\n  '{{PRAZO}}':         prazo,\n};\n\nfor (let i = 1; i <= MAX; i++) {\n  const it = itens[i - 1];\n  r[`{{I${i}_NUM}}`]   = it ? String(i).padStart(2, '0') : '';\n  r[`{{I${i}_DESC}}`]  = it ? it.desc : '';\n  r[`{{I${i}_QTD}}`]   = it ? String(it.q) : '';\n  r[`{{I${i}_UNIT}}`]  = it ? brl(it.u) : '';\n  r[`{{I${i}_TOTAL}}`] = it ? brl(it.total) : '';\n}\n\n// Formato da API do Google Docs\nconst requests = Object.entries(r).map(([marcador, valor]) => ({\n  replaceAllText: {\n    containsText: { text: marcador, matchCase: true },\n    replaceText: valor,\n  },\n}));\n\nreturn [{\n  json: {\n    numero,\n    nome,\n    email,\n    telefone,\n    subtotal: r['{{SUBTOTAL}}'],\n    totalFinal: r['{{TOTAL_FINAL}}'],\n    requests,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        0
+      ],
+      "id": "413fa13b-027f-45d4-942a-c7b752319fdd",
+      "name": "Calcular"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Copiar Modelo').first().json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        736,
+        0
+      ],
+      "id": "6cc7b2cb-fe8c-4588-9518-ac6c2d92c4fe",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "3kA7j6aQkuMSB9Nf",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "https://docs.google.com/document/d/13_LjYvAbFkp57eEgHQ3iBiusS8UycR22qJdt65lY2Do/edit?tab=t.0#heading=h.h1fwfj8614a",
+          "mode": "url"
+        },
+        "name": "=Orçamento {{ $json.numero }} - {{ $json.nome }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        288,
+        0
+      ],
+      "id": "76f68e6c-b7ee-44d9-b221-f42947a5603b",
+      "name": "Copiar Modelo",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "3kA7j6aQkuMSB9Nf",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Calcular",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular": {
+      "main": [
+        [
+          {
+            "node": "Copiar Modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copiar Modelo": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0d6c931b-2fb9-44bc-85d0-a333f1723bc4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "31611a6dce433924c7c9e673ab7f031f1b42fca5eb69138b93c79d831668f82a"
+  },
+  "nodeGroups": [],
+  "id": "l8ni0yuxTNwKDuqm",
+  "tags": []
+}
